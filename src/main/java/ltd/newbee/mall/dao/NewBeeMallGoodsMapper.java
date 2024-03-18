@@ -24,6 +24,8 @@ public interface NewBeeMallGoodsMapper {
 
     NewBeeMallGoods selectByPrimaryKey(Long goodsId);
 
+    NewBeeMallGoods selectByCategoryIdAndName(@Param("goodsName") String goodsName, @Param("goodsCategoryId") Long goodsCategoryId);
+
     int updateByPrimaryKeySelective(NewBeeMallGoods record);
 
     int updateByPrimaryKeyWithBLOBs(NewBeeMallGoods record);
@@ -43,6 +45,8 @@ public interface NewBeeMallGoodsMapper {
     int batchInsert(@Param("newBeeMallGoodsList") List<NewBeeMallGoods> newBeeMallGoodsList);
 
     int updateStockNum(@Param("stockNumDTOS") List<StockNumDTO> stockNumDTOS);
+
+    int recoverStockNum(@Param("stockNumDTOS") List<StockNumDTO> stockNumDTOS);
 
     int batchUpdateSellStatus(@Param("orderIds")Long[] orderIds,@Param("sellStatus") int sellStatus);
 

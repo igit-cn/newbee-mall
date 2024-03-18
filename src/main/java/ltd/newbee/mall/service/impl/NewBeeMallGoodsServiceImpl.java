@@ -8,12 +8,17 @@
  */
 package ltd.newbee.mall.service.impl;
 
+import ltd.newbee.mall.common.NewBeeMallCategoryLevelEnum;
+import ltd.newbee.mall.common.NewBeeMallException;
 import ltd.newbee.mall.common.ServiceResultEnum;
 import ltd.newbee.mall.controller.vo.NewBeeMallSearchGoodsVO;
+import ltd.newbee.mall.dao.GoodsCategoryMapper;
 import ltd.newbee.mall.dao.NewBeeMallGoodsMapper;
+import ltd.newbee.mall.entity.GoodsCategory;
 import ltd.newbee.mall.entity.NewBeeMallGoods;
 import ltd.newbee.mall.service.NewBeeMallGoodsService;
 import ltd.newbee.mall.util.BeanUtil;
+import ltd.newbee.mall.util.NewBeeMallUtils;
 import ltd.newbee.mall.util.PageQueryUtil;
 import ltd.newbee.mall.util.PageResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +34,8 @@ public class NewBeeMallGoodsServiceImpl implements NewBeeMallGoodsService {
 
     @Autowired
     private NewBeeMallGoodsMapper goodsMapper;
+    @Autowired
+    private GoodsCategoryMapper goodsCategoryMapper;
 
     @Override
     public PageResult getNewBeeMallGoodsPage(PageQueryUtil pageUtil) {
@@ -40,6 +47,17 @@ public class NewBeeMallGoodsServiceImpl implements NewBeeMallGoodsService {
 
     @Override
     public String saveNewBeeMallGoods(NewBeeMallGoods goods) {
+        GoodsCategory goodsCategory = goodsCategoryMapper.selectByPrimaryKey(goods.getGoodsCategoryId());
+        // 分类不存在或者不是三级分类，则该参数字段异常
+        if (goodsCategory == null || goodsCategory.getCategoryLevel().intValue() != NewBeeMallCategoryLevelEnum.LEVEL_THREE.getLevel()) {
+            return ServiceResultEnum.GOODS_CATEGORY_ERROR.getResult();
+        }
+        if (goodsMapper.selectByCategoryIdAndName(goods.getGoodsName(), goods.getGoodsCategoryId()) != null) {
+            return ServiceResultEnum.SAME_GOODS_EXIST.getResult();
+        }
+        goods.setGoodsName(NewBeeMallUtils.cleanString(goods.getGoodsName()));
+        goods.setGoodsIntro(NewBeeMallUtils.cleanString(goods.getGoodsIntro()));
+        goods.setTag(NewBeeMallUtils.cleanString(goods.getTag()));
         if (goodsMapper.insertSelective(goods) > 0) {
             return ServiceResultEnum.SUCCESS.getResult();
         }
@@ -55,10 +73,23 @@ public class NewBeeMallGoodsServiceImpl implements NewBeeMallGoodsService {
 
     @Override
     public String updateNewBeeMallGoods(NewBeeMallGoods goods) {
+        GoodsCategory goodsCategory = goodsCategoryMapper.selectByPrimaryKey(goods.getGoodsCategoryId());
+        // 分类不存在或者不是三级分类，则该参数字段异常
+        if (goodsCategory == null || goodsCategory.getCategoryLevel().intValue() != NewBeeMallCategoryLevelEnum.LEVEL_THREE.getLevel()) {
+            return ServiceResultEnum.GOODS_CATEGORY_ERROR.getResult();
+        }
         NewBeeMallGoods temp = goodsMapper.selectByPrimaryKey(goods.getGoodsId());
         if (temp == null) {
             return ServiceResultEnum.DATA_NOT_EXIST.getResult();
         }
+        NewBeeMallGoods temp2 = goodsMapper.selectByCategoryIdAndName(goods.getGoodsName(), goods.getGoodsCategoryId());
+        if (temp2 != null && !temp2.getGoodsId().equals(goods.getGoodsId())) {
+            //name和分类id相同且不同id 不能继续修改
+            return ServiceResultEnum.SAME_GOODS_EXIST.getResult();
+        }
+        goods.setGoodsName(NewBeeMallUtils.cleanString(goods.getGoodsName()));
+        goods.setGoodsIntro(NewBeeMallUtils.cleanString(goods.getGoodsIntro()));
+        goods.setTag(NewBeeMallUtils.cleanString(goods.getTag()));
         goods.setUpdateTime(new Date());
         if (goodsMapper.updateByPrimaryKeySelective(goods) > 0) {
             return ServiceResultEnum.SUCCESS.getResult();
@@ -68,9 +99,13 @@ public class NewBeeMallGoodsServiceImpl implements NewBeeMallGoodsService {
 
     @Override
     public NewBeeMallGoods getNewBeeMallGoodsById(Long id) {
-        return goodsMapper.selectByPrimaryKey(id);
+        NewBeeMallGoods newBeeMallGoods = goodsMapper.selectByPrimaryKey(id);
+        if (newBeeMallGoods == null) {
+            NewBeeMallException.fail(ServiceResultEnum.GOODS_NOT_EXIST.getResult());
+        }
+        return newBeeMallGoods;
     }
-    
+
     @Override
     public Boolean batchUpdateSellStatus(Long[] ids, int sellStatus) {
         return goodsMapper.batchUpdateSellStatus(ids, sellStatus) > 0;
